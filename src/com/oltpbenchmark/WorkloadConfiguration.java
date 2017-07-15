@@ -1,22 +1,20 @@
-/*******************************************************************************
- * oltpbenchmark.com
- *  
- *  Project Info:  http://oltpbenchmark.com
- *  Project Members:  	Carlo Curino <carlo.curino@gmail.com>
- * 				Evan Jones <ej@evanjones.ca>
- * 				DIFALLAH Djellel Eddine <djelleleddine.difallah@unifr.ch>
- * 				Andy Pavlo <pavlo@cs.brown.edu>
- * 				CUDRE-MAUROUX Philippe <philippe.cudre-mauroux@unifr.ch>  
- *  				Yang Zhang <yaaang@gmail.com> 
- * 
- *  This library is free software; you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Foundation;
- *  either version 3.0 of the License, or (at your option) any later version.
- * 
- *  This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU Lesser General Public License for more details.
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
  ******************************************************************************/
+
+
 package com.oltpbenchmark;
 
 import java.lang.reflect.Field;
@@ -31,6 +29,7 @@ import org.apache.commons.configuration.XMLConfiguration;
 import com.oltpbenchmark.api.TransactionTypes;
 import com.oltpbenchmark.types.DatabaseType;
 import com.oltpbenchmark.util.StringUtil;
+import com.oltpbenchmark.util.ThreadUtil;
 
 public class WorkloadConfiguration {
     
@@ -50,7 +49,9 @@ public class WorkloadConfiguration {
 	private String db_password;
 	private String db_driver;	
 	private double scaleFactor = 1.0;
+	private double selectivity = -1.0;
 	private int terminals;
+	private int loaderThreads = ThreadUtil.availableProcessors();
 	private int numTxnTypes;
     private TraceReader traceReader = null;
     public TraceReader getTraceReader() {
@@ -111,6 +112,18 @@ public class WorkloadConfiguration {
 		this.db_name = dbname;
 	}
 	
+	public void setLoaderThreads(int loaderThreads) {
+        this.loaderThreads = loaderThreads;
+    }
+	
+	/**
+	 * The number of loader threads that the framework is allowed to use.
+	 * @return
+	 */
+	public int getLoaderThreads() {
+        return this.loaderThreads;
+    }
+	
 	public int getNumTxnTypes() {
 		return numTxnTypes;
 	}
@@ -137,6 +150,14 @@ public class WorkloadConfiguration {
 	
 	public String getDBPassword() {
 		return this.db_password;
+	}
+
+	public void setSelectivity(double selectivity) {
+        this.selectivity = selectivity;
+    }
+	
+	public double getSelectivity() {
+	    return this.selectivity;
 	}
 
 	public void setDBDriver(String driver) {

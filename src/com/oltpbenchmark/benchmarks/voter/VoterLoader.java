@@ -1,14 +1,32 @@
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
+ ******************************************************************************/
+
 package com.oltpbenchmark.benchmarks.voter;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.List;
 
 import com.oltpbenchmark.api.Loader;
+import com.oltpbenchmark.api.Loader.LoaderThread;
 import com.oltpbenchmark.catalog.Table;
 import com.oltpbenchmark.util.SQLUtil;
 
-public class VoterLoader extends Loader {
+public class VoterLoader extends Loader<VoterBenchmark> {
 
     // Domain data: matching lists of Area codes and States
     private static final short[] areaCodes = new short[]{
@@ -58,13 +76,20 @@ public class VoterLoader extends Loader {
     }
 
     @Override
+    public List<LoaderThread> createLoaderTheads() throws SQLException {
+        // TODO Auto-generated method stub
+        return null;
+    }
+    
+    @Override
     public void load() throws SQLException {
         String[] contestants = VoterConstants.CONTESTANT_NAMES_CSV.split(",");
         
         int numContestants = ((VoterBenchmark)this.benchmark).numContestants;
         
-        Table tbl = getTableCatalog(VoterConstants.TABLENAME_CONTESTANTS);
-        PreparedStatement ps = this.conn.prepareStatement(SQLUtil.getInsertSQL(tbl));
+        boolean escapeNames = this.getDatabaseType().shouldEscapeNames();
+        Table tbl = benchmark.getTableCatalog(VoterConstants.TABLENAME_CONTESTANTS);
+        PreparedStatement ps = this.conn.prepareStatement(SQLUtil.getInsertSQL(tbl, escapeNames));
         for (int i = 0; i < numContestants; i++) {
             ps.setInt(1, i + 1);
             ps.setString(2, contestants[i]);
@@ -72,8 +97,8 @@ public class VoterLoader extends Loader {
         }
         ps.executeBatch();
         
-        tbl = getTableCatalog(VoterConstants.TABLENAME_LOCATIONS);
-        ps = this.conn.prepareStatement(SQLUtil.getInsertSQL(tbl));
+        tbl = benchmark.getTableCatalog(VoterConstants.TABLENAME_LOCATIONS);
+        ps = this.conn.prepareStatement(SQLUtil.getInsertSQL(tbl, escapeNames));
         for (int i = 0; i < areaCodes.length; i++) {
             ps.setShort(1, areaCodes[i]);
             ps.setString(2, states[i]);

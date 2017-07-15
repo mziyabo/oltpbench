@@ -1,26 +1,23 @@
-/*******************************************************************************
- * oltpbenchmark.com
- *  
- *  Project Info:  http://oltpbenchmark.com
- *  Project Members:  	Carlo Curino <carlo.curino@gmail.com>
- * 				Evan Jones <ej@evanjones.ca>
- * 				DIFALLAH Djellel Eddine <djelleleddine.difallah@unifr.ch>
- * 				Andy Pavlo <pavlo@cs.brown.edu>
- * 				CUDRE-MAUROUX Philippe <philippe.cudre-mauroux@unifr.ch>  
- *  				Yang Zhang <yaaang@gmail.com> 
- * 
- *  This library is free software; you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Foundation;
- *  either version 3.0 of the License, or (at your option) any later version.
- * 
- *  This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU Lesser General Public License for more details.
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
  ******************************************************************************/
+
+
 package com.oltpbenchmark.benchmarks.resourcestresser;
 
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.Random;
 
 import com.oltpbenchmark.api.Procedure.UserAbortException;
@@ -34,10 +31,14 @@ import com.oltpbenchmark.benchmarks.resourcestresser.procedures.IO1;
 import com.oltpbenchmark.benchmarks.resourcestresser.procedures.IO2;
 import com.oltpbenchmark.types.TransactionStatus;
 
-public class ResourceStresserWorker extends Worker {
-    public static final int CONTENTION1_howManyKeys = 1;
-    public static final int CONTENTION1_howManyUpdates = 2;
+public class ResourceStresserWorker extends Worker<ResourceStresserBenchmark> {
+    public static final int CONTENTION1_howManyKeys = 10;
+    public static final int CONTENTION1_howManyUpdates = 20;
     public static final int CONTENTION1_sleepLength = 1;
+    
+    public static final int CONTENTION2_howManyKeys = 10;
+    public static final int CONTENTION2_howManyUpdates = 5;
+    public static final int CONTENTION2_sleepLength = 2;
 
     public static final int IO1_howManyColsPerRow = 16;
     public static final int IO1_howManyRowsPerUpdate = 10;
@@ -56,63 +57,68 @@ public class ResourceStresserWorker extends Worker {
 
     public static final Random gen = new Random(1); // I change the random seed
                                                     // every time!
+    
+    private final int keyRange;
+    private final int numKeys;
 
-    public ResourceStresserWorker(int id, ResourceStresserBenchmark benchmarkModule) {
+    public ResourceStresserWorker(ResourceStresserBenchmark benchmarkModule, int id, int numKeys, int keyRange) {
         super(benchmarkModule, id);
+        this.numKeys = numKeys;
+        this.keyRange = keyRange;
     }
 
     @Override
     protected TransactionStatus executeWork(TransactionType nextTrans) throws UserAbortException, SQLException {
         if (nextTrans.getProcedureClass().equals(CPU1.class)) {
-            cpu1Transaction(10, 1);
+            cpu1Transaction(CPU1_howManyPerTrasaction, CPU1_sleep, CPU1_nestedLevel);
         } else if (nextTrans.getProcedureClass().equals(CPU2.class)) {
-            cpu2Transaction(5, 2);
+            cpu2Transaction(CPU2_howManyPerTrasaction, CPU2_sleep, CPU2_nestedLevel);
         } else if (nextTrans.getProcedureClass().equals(IO1.class)) {
-            io1Transaction(10, 10);
+            io1Transaction(IO1_howManyColsPerRow, IO1_howManyRowsPerUpdate, IO1_howManyUpdatePerTransaction, keyRange);
         } else if (nextTrans.getProcedureClass().equals(IO2.class)) {
-            io2Transaction(true, 50);
+            io2Transaction(IO2_howManyUpdatePerTransaction, IO2_makeSureWorketSetFitsInMemory, keyRange);
         } else if (nextTrans.getProcedureClass().equals(Contention1.class)) {
-            contention1Transaction();
+            contention1Transaction(CONTENTION1_howManyUpdates, CONTENTION1_sleepLength);
         } else if (nextTrans.getProcedureClass().equals(Contention2.class)) {
-            contention2Transaction(2, 5, 1);
+            contention2Transaction(CONTENTION2_howManyKeys, CONTENTION2_howManyUpdates, CONTENTION2_sleepLength);
         }
         conn.commit();
         return (TransactionStatus.SUCCESS);
     }
 
-    private void contention1Transaction() throws SQLException {
+    private void contention1Transaction(int howManyUpdates, int sleepLength) throws SQLException {
         Contention1 proc = this.getProcedure(Contention1.class);
         assert (proc != null);
-        proc.run(conn);
+        proc.run(conn, howManyUpdates, sleepLength, this.numKeys);
     }
 
-    private void contention2Transaction(int howManyUpdates, int howManyKeys, int sleepLength) throws SQLException {
+    private void contention2Transaction(int howManyKeys, int howManyUpdates, int sleepLength) throws SQLException {
         Contention2 proc = this.getProcedure(Contention2.class);
         assert (proc != null);
-        proc.run(conn);
+        proc.run(conn, howManyKeys, howManyUpdates, sleepLength, this.numKeys);
     }
 
-    private void io1Transaction(int howManyUpdatePerTransaction, int howManyRowsPerUpdate) throws SQLException {
+    private void io1Transaction(int howManyColsPerRow, int howManyUpdatesPerTransaction, int howManyRowsPerUpdate, int keyRange) throws SQLException {
         IO1 proc = this.getProcedure(IO1.class);
         assert (proc != null);
-        proc.run(conn, this.getId());
+        proc.run(conn, this.getId(), howManyColsPerRow, howManyUpdatesPerTransaction, howManyRowsPerUpdate, keyRange);
     }
 
-    private void io2Transaction(boolean makeSureWorketSetFitsInMemory, int howManyUpdatePerTransaction) throws SQLException {
+    private void io2Transaction(int howManyUpdatesPerTransaction, boolean makeSureWorkerSetFitsInMemory, int keyRange) throws SQLException {
         IO2 proc = this.getProcedure(IO2.class);
         assert (proc != null);
-        proc.run(conn, this.getId());
+        proc.run(conn, this.getId(), howManyUpdatesPerTransaction, makeSureWorkerSetFitsInMemory, keyRange);
     }
 
-    private void cpu1Transaction(int howManyPerTrasaction, long sleepLength) throws SQLException {
+    private void cpu1Transaction(int howManyPerTransaction, int sleepLength, int nestedLevel) throws SQLException {
         CPU1 proc = this.getProcedure(CPU1.class);
         assert (proc != null);
-        proc.run(conn);
+        proc.run(conn, howManyPerTransaction, sleepLength, nestedLevel);
     }
 
-    private void cpu2Transaction(int howManyPerTrasaction, long sleepLength) throws SQLException {
+    private void cpu2Transaction(int howManyPerTransaction, int sleepLength, int nestedLevel) throws SQLException {
         CPU2 proc = this.getProcedure(CPU2.class);
         assert (proc != null);
-        proc.run(conn);
+        proc.run(conn, howManyPerTransaction, sleepLength, nestedLevel);
     }
 }

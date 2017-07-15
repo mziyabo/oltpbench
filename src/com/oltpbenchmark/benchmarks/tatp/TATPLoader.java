@@ -1,67 +1,35 @@
-/*******************************************************************************
- * oltpbenchmark.com
- *  
- *  Project Info:  http://oltpbenchmark.com
- *  Project Members:    Carlo Curino <carlo.curino@gmail.com>
- *              Evan Jones <ej@evanjones.ca>
- *              DIFALLAH Djellel Eddine <djelleleddine.difallah@unifr.ch>
- *              Andy Pavlo <pavlo@cs.brown.edu>
- *              CUDRE-MAUROUX Philippe <philippe.cudre-mauroux@unifr.ch>  
- *                  Yang Zhang <yaaang@gmail.com> 
- * 
- *  This library is free software; you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Foundation;
- *  either version 3.0 of the License, or (at your option) any later version.
- * 
- *  This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU Lesser General Public License for more details.
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
  ******************************************************************************/
-/***************************************************************************
- *  Copyright (C) 2009 by H-Store Project                                  *
- *  Brown University                                                       *
- *  Massachusetts Institute of Technology                                  *
- *  Yale University                                                        *
- *                                                                         *
- *  Original Version:                                                      *
- *  Zhe Zhang (zhe@cs.brown.edu)                                           *
- *                                                                         *
- *  Modifications by:                                                      *
- *  Andy Pavlo (pavlo@cs.brown.edu)                                        *
- *  http://www.cs.brown.edu/~pavlo/                                        *
- *                                                                         *
- *  Permission is hereby granted, free of charge, to any person obtaining  *
- *  a copy of this software and associated documentation files (the        *
- *  "Software"), to deal in the Software without restriction, including    *
- *  without limitation the rights to use, copy, modify, merge, publish,    *
- *  distribute, sublicense, and/or sell copies of the Software, and to     *
- *  permit persons to whom the Software is furnished to do so, subject to  *
- *  the following conditions:                                              *
- *                                                                         *
- *  The above copyright notice and this permission notice shall be         *
- *  included in all copies or substantial portions of the Software.        *
- *                                                                         *
- *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        *
- *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     *
- *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. *
- *  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR      *
- *  OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,  *
- *  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR  *
- *  OTHER DEALINGS IN THE SOFTWARE.                                        *
- ***************************************************************************/
+
+
 package com.oltpbenchmark.benchmarks.tatp;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 
 import com.oltpbenchmark.api.Loader;
+import com.oltpbenchmark.api.Loader.LoaderThread;
 import com.oltpbenchmark.catalog.*;
 import com.oltpbenchmark.util.SQLUtil;
 
-public class TATPLoader extends Loader {
+public class TATPLoader extends Loader<TATPBenchmark> {
     private static final Logger LOG = Logger.getLogger(TATPLoader.class);
     
     private final long subscriberSize;
@@ -73,6 +41,12 @@ public class TATPLoader extends Loader {
     	this.subscriberSize = Math.round(TATPConstants.DEFAULT_NUM_SUBSCRIBERS * this.scaleFactor);
         if (LOG.isDebugEnabled()) LOG.debug("CONSTRUCTOR: " + TATPLoader.class.getName());
     }
+    
+    @Override
+    public List<LoaderThread> createLoaderTheads() throws SQLException {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
     @Override
     public void load() {
@@ -82,7 +56,7 @@ public class TATPLoader extends Loader {
             new Thread() {
                 public void run() {
                     if (LOG.isDebugEnabled()) LOG.debug("Start loading " + TATPConstants.TABLENAME_SUBSCRIBER);
-                    Table catalog_tbl = getTableCatalog(TATPConstants.TABLENAME_SUBSCRIBER);
+                    Table catalog_tbl = benchmark.getTableCatalog(TATPConstants.TABLENAME_SUBSCRIBER);
                     try {
                     	genSubscriber(catalog_tbl);
                     } catch (SQLException ex) {
@@ -95,7 +69,7 @@ public class TATPLoader extends Loader {
             new Thread() {
                 public void run() {
                     if (LOG.isDebugEnabled()) LOG.debug("Start loading " + TATPConstants.TABLENAME_ACCESS_INFO);
-                    Table catalog_tbl = getTableCatalog(TATPConstants.TABLENAME_ACCESS_INFO);
+                    Table catalog_tbl = benchmark.getTableCatalog(TATPConstants.TABLENAME_ACCESS_INFO);
                     try {
                     	genAccessInfo(catalog_tbl);
                     } catch (SQLException ex) {
@@ -108,8 +82,8 @@ public class TATPLoader extends Loader {
             new Thread() {
                 public void run() {
                     if (LOG.isDebugEnabled()) LOG.debug("Start loading " + TATPConstants.TABLENAME_SPECIAL_FACILITY + " and " + TATPConstants.TABLENAME_CALL_FORWARDING);
-                    Table catalog_spe = getTableCatalog(TATPConstants.TABLENAME_SPECIAL_FACILITY);
-                    Table catalog_cal = getTableCatalog(TATPConstants.TABLENAME_CALL_FORWARDING);
+                    Table catalog_spe = benchmark.getTableCatalog(TATPConstants.TABLENAME_SPECIAL_FACILITY);
+                    Table catalog_cal = benchmark.getTableCatalog(TATPConstants.TABLENAME_CALL_FORWARDING);
                     try {
                     	genSpeAndCal(catalog_spe, catalog_cal);
                     } catch (SQLException ex) {

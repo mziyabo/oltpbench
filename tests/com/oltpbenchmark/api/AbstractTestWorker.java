@@ -1,22 +1,20 @@
-/*******************************************************************************
- * oltpbenchmark.com
- *  
- *  Project Info:  http://oltpbenchmark.com
- *  Project Members:    Carlo Curino <carlo.curino@gmail.com>
- *              Evan Jones <ej@evanjones.ca>
- *              DIFALLAH Djellel Eddine <djelleleddine.difallah@unifr.ch>
- *              Andy Pavlo <pavlo@cs.brown.edu>
- *              CUDRE-MAUROUX Philippe <philippe.cudre-mauroux@unifr.ch>  
- *                  Yang Zhang <yaaang@gmail.com> 
- * 
- *  This library is free software; you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Foundation;
- *  either version 3.0 of the License, or (at your option) any later version.
- * 
- *  This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU Lesser General Public License for more details.
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
  ******************************************************************************/
+
+
 package com.oltpbenchmark.api;
 
 import java.sql.Connection;
@@ -29,7 +27,7 @@ public abstract class AbstractTestWorker<T extends BenchmarkModule> extends Abst
     
     protected static final int NUM_TERMINALS = 1;
     
-    protected List<Worker> workers;
+    protected List<Worker<? extends BenchmarkModule>> workers;
     
     @SuppressWarnings("rawtypes")
     protected void setUp(Class<T> clazz, Class...procClasses) throws Exception {
@@ -59,7 +57,7 @@ public abstract class AbstractTestWorker<T extends BenchmarkModule> extends Abst
      */
     public void testGetProcedure() throws Exception {
         // Make sure that we can get a Procedure handle for each TransactionType
-        Worker w = workers.get(0);
+        Worker<?> w = workers.get(0);
         assertNotNull(w);
         for (Class<? extends Procedure> procClass: this.procClasses) {
             assertNotNull(procClass);
@@ -77,7 +75,7 @@ public abstract class AbstractTestWorker<T extends BenchmarkModule> extends Abst
         this.benchmark.loadDatabase();
         this.conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
 
-        Worker w = workers.get(0);
+        Worker<?> w = workers.get(0);
         assertNotNull(w);
         w.initialize();
         assertFalse(this.conn.isReadOnly());

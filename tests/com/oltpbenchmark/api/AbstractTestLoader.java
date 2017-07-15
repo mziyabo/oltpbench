@@ -1,22 +1,20 @@
-/*******************************************************************************
- * oltpbenchmark.com
- *  
- *  Project Info:  http://oltpbenchmark.com
- *  Project Members:    Carlo Curino <carlo.curino@gmail.com>
- *              Evan Jones <ej@evanjones.ca>
- *              DIFALLAH Djellel Eddine <djelleleddine.difallah@unifr.ch>
- *              Andy Pavlo <pavlo@cs.brown.edu>
- *              CUDRE-MAUROUX Philippe <philippe.cudre-mauroux@unifr.ch>  
- *                  Yang Zhang <yaaang@gmail.com> 
- * 
- *  This library is free software; you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Foundation;
- *  either version 3.0 of the License, or (at your option) any later version.
- * 
- *  This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU Lesser General Public License for more details.
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
  ******************************************************************************/
+
+
 package com.oltpbenchmark.api;
 
 import java.sql.ResultSet;
@@ -24,13 +22,21 @@ import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
+
 import com.oltpbenchmark.catalog.Table;
 import com.oltpbenchmark.util.Histogram;
 import com.oltpbenchmark.util.SQLUtil;
 
 public abstract class AbstractTestLoader<T extends BenchmarkModule> extends AbstractTestCase<T> {
     
-    protected Set<String> ignoreTables = new HashSet<String>();
+    private static final Logger LOG = Logger.getLogger(AbstractTestLoader.class);
+    
+    /**
+     * These are tables that are not pre-loaded by the benchmark loader
+     * So we want to ignore them if their count is zero
+     */
+    private Set<String> ignoreTables = new HashSet<String>();
     
     @SuppressWarnings("rawtypes")
     protected void setUp(Class<T> clazz, String ignoreTables[], Class...procClasses) throws Exception {
@@ -60,21 +66,28 @@ public abstract class AbstractTestLoader<T extends BenchmarkModule> extends Abst
         // All we really can do here is just invoke the loader 
         // and then check to make sure that our tables aren't empty
         this.benchmark.loadDatabase(this.conn);
-        Histogram<String> tableSizes = new Histogram<String>();
+        assertFalse("Failed to get table names for " + benchmark.getBenchmarkName().toUpperCase(),
+                    this.catalog.getTableNames().isEmpty());
+        
+        LOG.debug("Computing the size of the tables");
+        Histogram<String> tableSizes = new Histogram<String>(true);
         for (String tableName : this.catalog.getTableNames()) {
             if (this.ignoreTables.contains(tableName.toUpperCase())) continue;
             Table catalog_tbl = this.catalog.getTable(tableName);
             
-            sql = SQLUtil.getCountSQL(catalog_tbl);
+            sql = SQLUtil.getCountSQL(this.workConf.getDBType(), catalog_tbl);
             result = stmt.executeQuery(sql);
             assertNotNull(result);
             boolean adv = result.next();
             assertTrue(sql, adv);
             int count = result.getInt(1);
             result.close();
+            System.out.println(sql + " => " + count);
             tableSizes.put(tableName, count);            
         } // FOR
-        System.err.println(tableSizes);
+        System.out.println("=== TABLE SIZES ===\n" + tableSizes);
+        assertFalse("Unable to compute the tables size for " + benchmark.getBenchmarkName().toUpperCase(),
+                    tableSizes.isEmpty());
         
         for (String tableName : tableSizes.values()) {
             long count = tableSizes.get(tableName);

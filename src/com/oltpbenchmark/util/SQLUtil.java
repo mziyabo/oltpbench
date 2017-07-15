@@ -1,3 +1,19 @@
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
+ ******************************************************************************/
+
 package com.oltpbenchmark.util;
 
 import java.math.BigDecimal;
@@ -104,13 +120,18 @@ public abstract class SQLUtil {
         else if (obj instanceof Date) {
             return new Timestamp(((Date)obj).getTime());
         }
-        else if (obj instanceof oracle.sql.TIMESTAMP) {
-            try {
-                return ((oracle.sql.TIMESTAMP)obj).timestampValue();
-            } catch (SQLException ex) {
-                throw new RuntimeException("Failed to get timestamp from '" + obj + "'", ex);
-            }
-        }
+//         else {
+//             LOG.error(String.format("Unexpected timestamp object type '%s': %s",
+//                                     obj.getClass().getName(), obj));
+//         }
+        // FIXME: Not sure how to include this without including Oracle jars
+//        else if (obj instanceof oracle.sql.TIMESTAMP) {
+//            try {
+//                return ((oracle.sql.TIMESTAMP)obj).timestampValue();
+//            } catch (SQLException ex) {
+//                throw new RuntimeException("Failed to get timestamp from '" + obj + "'", ex);
+//            }
+//        }
         
         Long timestamp = SQLUtil.getLong(obj);
         return (timestamp != null ? new Timestamp(timestamp) : null);
@@ -130,6 +151,8 @@ public abstract class SQLUtil {
             case POSTGRES:
                 return String.format("pg_get_serial_sequence('%s', '%s')",
                                      catalog_tbl.getName(), catalog_col.getName());
+            default:
+                LOG.warn("Unexpected request for sequence name on " + catalog_col + " using " + dbType);
         } // SWITCH
         return (null);
     }
@@ -290,8 +313,8 @@ public abstract class SQLUtil {
      * @param table
      * @return SQL for select count execution
      */
-    public static String getCountSQL(Table catalog_tbl) {
-        return SQLUtil.getCountSQL(catalog_tbl, "*");
+    public static String getCountSQL(DatabaseType dbType, Table catalog_tbl) {
+        return SQLUtil.getCountSQL(dbType, catalog_tbl, "*");
     }
 
     /**
@@ -301,17 +324,21 @@ public abstract class SQLUtil {
      * @param col
      * @return SQL for select count execution
      */
-    public static String getCountSQL(Table catalog_tbl, String col) {
-        return String.format("SELECT COUNT(%s) FROM %s",
-                             col, catalog_tbl.getEscapedName());
+    public static String getCountSQL(DatabaseType dbType, Table catalog_tbl, String col) {
+        String tableName = (dbType.shouldEscapeNames() ? catalog_tbl.getEscapedName() : catalog_tbl.getName());
+        return String.format("SELECT COUNT(%s) FROM %s", col, tableName.trim());
     }
 
 
     /**
      * Automatically generate the 'INSERT' SQL string to insert
      * one record into this table
+     * 
+     * <b>Note:</b> You should use the other getInsertSQL methods that will escape things based
+     * on what DBMS you are using.
      * @return
      */
+    @Deprecated
     public static String getInsertSQL(Table catalog_tbl) {
         return getInsertSQL(catalog_tbl, 1);
     }
@@ -343,6 +370,15 @@ public abstract class SQLUtil {
         return getInsertSQL(catalog_tbl, false, true, batchSize, exclude_columns);
     }
     
+    /**
+     * Automatically generate the 'INSERT' SQL string for this table
+     * @param catalog_tbl
+     * @param show_cols
+     * @param escape_names
+     * @param batchSize
+     * @param exclude_columns
+     * @return
+     */
     public static String getInsertSQL(Table catalog_tbl, boolean show_cols, boolean escape_names, int batchSize, int...exclude_columns) {
     	StringBuilder sb = new StringBuilder();
     	sb.append("INSERT INTO ")
@@ -385,12 +421,12 @@ public abstract class SQLUtil {
     	return (sb.toString());
     }
 
-    public static String getMaxColSQL(Table catalog_tbl, String col) {
-        return String.format("SELECT MAX(%s) FROM %s",
-                col, catalog_tbl.getEscapedName());
+    public static String getMaxColSQL(DatabaseType dbType, Table catalog_tbl, String col) {
+        String tableName = (dbType.shouldEscapeNames() ? catalog_tbl.getEscapedName() : catalog_tbl.getName());
+        return String.format("SELECT MAX(%s) FROM %s", col, tableName);
     }
 
-    public static String selectColValues(Table catalog_tbl, String col) {
+    public static String selectColValues(DatabaseType dbType, Table catalog_tbl, String col) {
         return String.format("SELECT %s FROM %s",
                 col, catalog_tbl.getEscapedName());
     }

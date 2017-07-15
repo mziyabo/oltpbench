@@ -1,3 +1,19 @@
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
+ ******************************************************************************/
+
 package com.oltpbenchmark.api;
 
 import java.io.File;
@@ -6,36 +22,58 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.log4j.Logger;
+
 import junit.framework.TestCase;
 
 import com.oltpbenchmark.WorkloadConfiguration;
 import com.oltpbenchmark.catalog.Catalog;
 import com.oltpbenchmark.types.DatabaseType;
 import com.oltpbenchmark.util.ClassUtil;
+import com.oltpbenchmark.util.FileUtil;
 
 public abstract class AbstractTestCase<T extends BenchmarkModule> extends TestCase {
     
+    private static final Logger LOG = Logger.getLogger(AbstractTestCase.class);
+    
     // HACK
     static {
-//      org.apache.log4j.PropertyConfigurator.configure("/home/pavlo/Documents/OLTPBenchmark/OLTPBenchmark/log4j.properties");
+        String propFile = "/home/pavlo/Documents/OLTPBenchmark/oltpbench/log4j.properties";
+        if (FileUtil.exists(propFile)) {
+            org.apache.log4j.PropertyConfigurator.configure(propFile);    
+        }
     }
     
     // -----------------------------------------------------------------
     
-    // HSQLDB
-    public static final String DB_CONNECTION = "jdbc:hsqldb:mem:";
-    public static final String DB_JDBC = "org.hsqldb.jdbcDriver";
+    /**
+     * This is the database type that we will use in our unit tests.
+     * This should always be one of the embedded java databases
+     */
     public static final DatabaseType DB_TYPE = DatabaseType.HSQLDB;
-    
-    // H2
-    // public static final String DB_CONNECTION = "jdbc:h2:mem:";
-    // public static final String DB_JDBC = "org.h2.Driver";
-    // public static final DatabaseType DB_TYPE = DatabaseType.H2;
-    
-    // SQLITE
-    // public static final String DB_CONNECTION = "jdbc:sqlite:/tmp/";
-    // public static final String DB_JDBC = "org.sqlite.JDBC";
-    // public static final DatabaseType DB_TYPE = DatabaseType.SQLITE;
+    public static final String DB_CONNECTION;
+    static {
+        switch (DB_TYPE) {
+            case HSQLDB: {
+                DB_CONNECTION = "jdbc:hsqldb:mem:";
+                break;
+            }
+            case H2: {
+                DB_CONNECTION = "jdbc:h2:mem:";
+                break;
+            }
+            case SQLITE: {
+                 DB_CONNECTION = "jdbc:sqlite::memory:";
+//                DB_CONNECTION = "jdbc:sqlite:/tmp/";
+                break;
+            }
+            default: {
+                LOG.warn("Unexpected testing DatabaseType '" + DB_TYPE + "'");
+                DB_CONNECTION = null;
+            }
+        } // SWITCH
+        
+    }
     
     // -----------------------------------------------------------------
     
@@ -51,7 +89,7 @@ public abstract class AbstractTestCase<T extends BenchmarkModule> extends TestCa
     @SuppressWarnings({ "rawtypes", "unchecked" })
     protected void setUp(Class<T> clazz, Class...procClasses) throws Exception {
         super.setUp();
-        Class.forName(DB_JDBC);
+        Class.forName(DB_TYPE.getSuggestedDriver());
         
         this.workConf = new WorkloadConfiguration();
         TransactionTypes txnTypes = new TransactionTypes();
@@ -73,7 +111,7 @@ public abstract class AbstractTestCase<T extends BenchmarkModule> extends TestCa
                                                    new Object[] { this.workConf },
                                                    new Class<?>[] { WorkloadConfiguration.class });
         assertNotNull(this.benchmark);
-        System.err.println(this.benchmark + " -> " + this.dbName);
+        LOG.info(DB_TYPE + "::" + this.benchmark + " -> " + this.dbName);
         
         this.catalog = this.benchmark.getCatalog();
         assertNotNull(this.catalog);

@@ -1,22 +1,20 @@
-/*******************************************************************************
- * oltpbenchmark.com
- *  
- *  Project Info:  http://oltpbenchmark.com
- *  Project Members:  	Carlo Curino <carlo.curino@gmail.com>
- * 				Evan Jones <ej@evanjones.ca>
- * 				DIFALLAH Djellel Eddine <djelleleddine.difallah@unifr.ch>
- * 				Andy Pavlo <pavlo@cs.brown.edu>
- * 				CUDRE-MAUROUX Philippe <philippe.cudre-mauroux@unifr.ch>  
- *  				Yang Zhang <yaaang@gmail.com> 
- * 
- *  This library is free software; you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Foundation;
- *  either version 3.0 of the License, or (at your option) any later version.
- * 
- *  This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU Lesser General Public License for more details.
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
  ******************************************************************************/
+
+
 package com.oltpbenchmark.benchmarks.epinions;
 
 import java.io.IOException;
@@ -51,8 +49,8 @@ public class EpinionsBenchmark extends BenchmarkModule {
     }
 
     @Override
-    protected List<Worker> makeWorkersImpl(boolean verbose) throws IOException {
-        ArrayList<Worker> workers = new ArrayList<Worker>();
+    protected List<Worker<? extends BenchmarkModule>> makeWorkersImpl(boolean verbose) throws IOException {
+        List<Worker<? extends BenchmarkModule>> workers = new ArrayList<Worker<? extends BenchmarkModule>>();
 
         try {
             Connection metaConn = this.makeConnection();
@@ -63,7 +61,7 @@ public class EpinionsBenchmark extends BenchmarkModule {
             Table t = this.catalog.getTable("USER");
             assert (t != null) : "Invalid table name '" + t + "' " + this.catalog.getTables();
 
-            String userCount = SQLUtil.selectColValues(t, "u_id");
+            String userCount = SQLUtil.selectColValues(this.workConf.getDBType(), t, "u_id");
             Statement stmt = metaConn.createStatement();
             ResultSet res = stmt.executeQuery(userCount);
             ArrayList<String> user_ids = new ArrayList<String>();
@@ -75,7 +73,7 @@ public class EpinionsBenchmark extends BenchmarkModule {
             // LIST OF ITEMS AND
             t = this.catalog.getTable("ITEM");
             assert (t != null) : "Invalid table name '" + t + "' " + this.catalog.getTables();
-            String itemCount = SQLUtil.selectColValues(t, "i_id");
+            String itemCount = SQLUtil.selectColValues(this.workConf.getDBType(), t, "i_id");
             res = stmt.executeQuery(itemCount);
             ArrayList<String> item_ids = new ArrayList<String>();
             while (res.next()) {
@@ -86,7 +84,7 @@ public class EpinionsBenchmark extends BenchmarkModule {
             metaConn.close();
             // Now create the workers.
             for (int i = 0; i < workConf.getTerminals(); ++i) {
-                workers.add(new EpinionsWorker(i, this, user_ids, item_ids));
+                workers.add(new EpinionsWorker(this, i, user_ids, item_ids));
             }
 
         } catch (SQLException e) {
@@ -96,7 +94,7 @@ public class EpinionsBenchmark extends BenchmarkModule {
     }
 
     @Override
-    protected Loader makeLoaderImpl(Connection conn) throws SQLException {
+    protected Loader<EpinionsBenchmark> makeLoaderImpl(Connection conn) throws SQLException {
         return new EpinionsLoader(this, conn);
     }
 

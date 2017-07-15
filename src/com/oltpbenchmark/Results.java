@@ -1,22 +1,20 @@
-/*******************************************************************************
- * oltpbenchmark.com
- *  
- *  Project Info:  http://oltpbenchmark.com
- *  Project Members:    Carlo Curino <carlo.curino@gmail.com>
- *              Evan Jones <ej@evanjones.ca>
- *              DIFALLAH Djellel Eddine <djelleleddine.difallah@unifr.ch>
- *              Andy Pavlo <pavlo@cs.brown.edu>
- *              CUDRE-MAUROUX Philippe <philippe.cudre-mauroux@unifr.ch>  
- *                  Yang Zhang <yaaang@gmail.com> 
- * 
- *  This library is free software; you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Foundation;
- *  either version 3.0 of the License, or (at your option) any later version.
- * 
- *  This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU Lesser General Public License for more details.
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
  ******************************************************************************/
+
+
 package com.oltpbenchmark;
 
 import java.io.PrintStream;
@@ -30,6 +28,7 @@ import com.oltpbenchmark.LatencyRecord.Sample;
 import com.oltpbenchmark.ThreadBench.TimeBucketIterable;
 import com.oltpbenchmark.api.TransactionType;
 import com.oltpbenchmark.util.Histogram;
+import com.oltpbenchmark.util.StringUtil;
 
 public final class Results {
     public final long nanoSeconds;
@@ -102,6 +101,45 @@ public final class Results {
             i += 1;
         }
     }
+    
+    public void writeCSV2(PrintStream out) {
+        writeCSV2(1, out, TransactionType.INVALID);
+    }
+
+    public void writeCSV2(int windowSizeSeconds, PrintStream out, TransactionType txType) {
+    	String header[] = {
+	    	"Time (seconds)",
+	    	"Requests",
+	    	"Throughput (requests/second)",
+	    	"Minimum Latency (microseconds)",
+	    	"25th Percentile Latency (microseconds)",
+	    	"Median Latency (microseconds)",
+	    	"Average Latency (microseconds)",
+	    	"75th Percentile Latency (microseconds)",
+	    	"90th Percentile Latency (microseconds)",
+	    	"95th Percentile Latency (microseconds)",
+	    	"99th Percentile Latency (microseconds)",
+	    	"Maximum Latency (microseconds)"
+    	};
+    	out.println(StringUtil.join(",", header));
+        int i = 0;
+        for (DistributionStatistics s : new TimeBucketIterable(latencySamples, windowSizeSeconds, txType)) {
+            out.printf("%d,%d,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+            		i * windowSizeSeconds,
+            		s.getCount(),
+            		(double) s.getCount() / windowSizeSeconds,
+                    (int) s.getMinimum(),
+                    (int) s.get25thPercentile(),
+                    (int) s.getMedian(),
+                    (int) s.getAverage(),
+                    (int) s.get75thPercentile(),
+                    (int) s.get90thPercentile(),
+                    (int) s.get95thPercentile(),
+                    (int) s.get99thPercentile(),
+                    (int) s.getMaximum());
+            i += 1;
+        }
+    }
 
     public void writeAllCSV(PrintStream out) {
         long startNs = latencySamples.get(0).startNs;
@@ -112,7 +150,7 @@ public final class Results {
         }
     }
 
-    public void writeAllCSVAbsoluteTiming(PrintStream out) {
+    public void writeAllCSVAbsoluteTiming(List<TransactionType> activeTXTypes, PrintStream out) {
 
         // This is needed because nanTime does not guarantee offset... we
         // ground it (and round it) to ms from 1970-01-01 like currentTime
@@ -121,10 +159,28 @@ public final class Results {
         double offset = x - y;
 
         // long startNs = latencySamples.get(0).startNs;
-        out.println("transaction type (index in config file), start time (microseconds),latency (microseconds),worker id(start number), phase id(index in config file)");
+        String header[] = {
+            "Transaction Type Index",
+            "Transaction Name",
+            "Start Time (microseconds)",
+            "Latency (microseconds)",
+            "Worker Id (start number)",
+            "Phase Id (index in config file)"
+        };
+        out.println(StringUtil.join(",", header));
         for (Sample s : latencySamples) {
             double startUs = ((double) s.startNs / (double) 1000000000);
-            out.println(s.tranType + "," + String.format("%10.6f", startUs - offset) + "," + s.latencyUs + "," + s.workerId + "," + s.phaseId);
+            String row[] = {
+                Integer.toString(s.tranType),
+                // Important!
+                // The TxnType offsets start at 1!
+                activeTXTypes.get(s.tranType-1).getName(),
+                String.format("%10.6f", startUs - offset),
+                Integer.toString(s.latencyUs),
+                Integer.toString(s.workerId),
+                Integer.toString(s.phaseId),
+            };
+            out.println(StringUtil.join(",", row));
         }
     }
 

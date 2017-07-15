@@ -1,27 +1,26 @@
-/*******************************************************************************
- * oltpbenchmark.com
- *  
- *  Project Info:  http://oltpbenchmark.com
- *  Project Members:    Carlo Curino <carlo.curino@gmail.com>
- *              Evan Jones <ej@evanjones.ca>
- *              DIFALLAH Djellel Eddine <djelleleddine.difallah@unifr.ch>
- *              Andy Pavlo <pavlo@cs.brown.edu>
- *              CUDRE-MAUROUX Philippe <philippe.cudre-mauroux@unifr.ch>  
- *                  Yang Zhang <yaaang@gmail.com> 
- * 
- *  This library is free software; you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Foundation;
- *  either version 3.0 of the License, or (at your option) any later version.
- * 
- *  This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU Lesser General Public License for more details.
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
  ******************************************************************************/
+
+
 package com.oltpbenchmark.api;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Random;
 
 import org.apache.log4j.Logger;
@@ -37,22 +36,81 @@ import com.oltpbenchmark.util.SQLUtil;
 /**
  * @author pavlo
  */
-public abstract class Loader {
+public abstract class Loader<T extends BenchmarkModule> {
     private static final Logger LOG = Logger.getLogger(Loader.class);
 
-    protected final BenchmarkModule benchmark;
+    protected final T benchmark;
+    @Deprecated
     protected Connection conn;
     protected final WorkloadConfiguration workConf;
     protected final double scaleFactor;
     private final Histogram<String> tableSizes = new Histogram<String>(true);
 
-    public Loader(BenchmarkModule benchmark, Connection conn) {
+    /**
+     * A LoaderThread is responsible for loading some portion of a
+     * benchmark's databsae.
+     * Note that each LoaderThread has its own databsae Connection handle.
+     */
+    public abstract class LoaderThread implements Runnable {
+        private final Connection conn;
+        
+        public LoaderThread() throws SQLException {
+            this.conn = Loader.this.benchmark.makeConnection();
+            this.conn.setAutoCommit(false);
+        }
+        
+        @Override
+        public final void run() {
+            try {
+                this.load(this.conn);
+            } catch (SQLException ex) {
+                SQLException next_ex = ex.getNextException();
+                String msg = String.format("Unexpected error when loading %s database",
+                                           Loader.this.benchmark.getBenchmarkName().toUpperCase());
+                LOG.error(msg, next_ex);
+                throw new RuntimeException(ex);
+            }
+        }
+
+        /**
+         * This is the method that each LoaderThread has to implement
+         * @param conn
+         * @throws SQLException
+         */
+        public abstract void load(Connection conn) throws SQLException;
+        
+    }
+    
+    public Loader(T benchmark, Connection conn) {
         this.benchmark = benchmark;
         this.conn = conn;
         this.workConf = benchmark.getWorkloadConfiguration();
         this.scaleFactor = workConf.getScaleFactor();
     }
 
+    /**
+     * Each Loader will generate a list of Runnable objects that
+     * will perform the loading operation for the benchmark.
+     * The number of threads that will be launched at the same time
+     * depends on the number of cores that are available. But they are
+     * guaranteed to execute in the order specified in the list.
+     * You may have to use your own protections if there are dependencies 
+     * @return
+     */
+    public abstract List<LoaderThread> createLoaderTheads() throws SQLException;
+    
+    /**
+     * @throws SQLException
+     */
+    @Deprecated
+    public void load() throws SQLException {
+        List<LoaderThread> threads = this.createLoaderTheads();
+        for (LoaderThread t : threads) {
+            t.run();
+        }
+    }
+    
+    
     public void setTableCount(String tableName, int size) {
         this.tableSizes.set(tableName, size);
     }
@@ -70,16 +128,6 @@ public abstract class Loader {
     }
 
     /**
-     * Hackishly return true if we are using the same type as we use in our unit
-     * tests
-     * 
-     * @return
-     */
-    protected final boolean isTesting() {
-        return (this.workConf.getDBType() == DatabaseType.TEST_TYPE);
-    }
-
-    /**
      * Return the database's catalog
      */
     public Catalog getCatalog() {
@@ -92,6 +140,7 @@ public abstract class Loader {
      * @param tableName
      * @return
      */
+    @Deprecated
     public Table getTableCatalog(String tableName) {
         Table catalog_tbl = this.benchmark.getCatalog().getTable(tableName.toUpperCase());
         assert (catalog_tbl != null) : "Invalid table name '" + tableName + "'";
@@ -107,10 +156,7 @@ public abstract class Loader {
         return (this.benchmark.rng());
     }
 
-    /**
-     * @throws SQLException
-     */
-    public abstract void load() throws SQLException;
+    
 
     /**
      * Method that can be overriden to specifically unload the tables of the

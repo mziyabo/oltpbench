@@ -1,49 +1,20 @@
-/*******************************************************************************
- * oltpbenchmark.com
- *  
- *  Project Info:  http://oltpbenchmark.com
- *  Project Members:    Carlo Curino <carlo.curino@gmail.com>
- *              Evan Jones <ej@evanjones.ca>
- *              DIFALLAH Djellel Eddine <djelleleddine.difallah@unifr.ch>
- *              Andy Pavlo <pavlo@cs.brown.edu>
- *              CUDRE-MAUROUX Philippe <philippe.cudre-mauroux@unifr.ch>  
- *                  Yang Zhang <yaaang@gmail.com> 
- * 
- *  This library is free software; you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Foundation;
- *  either version 3.0 of the License, or (at your option) any later version.
- * 
- *  This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *  See the GNU Lesser General Public License for more details.
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
  ******************************************************************************/
-/***************************************************************************
- *  Copyright (C) 2011 by H-Store Project                                  *
- *  Brown University                                                       *
- *  Massachusetts Institute of Technology                                  *
- *  Yale University                                                        *
- *                                                                         *
- *  http://hstore.cs.brown.edu/                                            *
- *                                                                         *
- *  Permission is hereby granted, free of charge, to any person obtaining  *
- *  a copy of this software and associated documentation files (the        *
- *  "Software"), to deal in the Software without restriction, including    *
- *  without limitation the rights to use, copy, modify, merge, publish,    *
- *  distribute, sublicense, and/or sell copies of the Software, and to     *
- *  permit persons to whom the Software is furnished to do so, subject to  *
- *  the following conditions:                                              *
- *                                                                         *
- *  The above copyright notice and this permission notice shall be         *
- *  included in all copies or substantial portions of the Software.        *
- *                                                                         *
- *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        *
- *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     *
- *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. *
- *  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR      *
- *  OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,  *
- *  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR  *
- *  OTHER DEALINGS IN THE SOFTWARE.                                        *
- ***************************************************************************/
+
+
 package com.oltpbenchmark.benchmarks.seats;
 
 import java.io.File;
@@ -72,6 +43,7 @@ import org.apache.commons.collections15.set.ListOrderedSet;
 import org.apache.log4j.Logger;
 
 import com.oltpbenchmark.api.Loader;
+import com.oltpbenchmark.api.Loader.LoaderThread;
 import com.oltpbenchmark.benchmarks.seats.util.CustomerId;
 import com.oltpbenchmark.benchmarks.seats.util.CustomerIdIterable;
 import com.oltpbenchmark.benchmarks.seats.util.DistanceUtil;
@@ -83,7 +55,7 @@ import com.oltpbenchmark.catalog.Table;
 import com.oltpbenchmark.util.*;
 import com.oltpbenchmark.util.RandomDistribution.*;
 
-public class SEATSLoader extends Loader {
+public class SEATSLoader extends Loader<SEATSBenchmark> {
     private static final Logger LOG = Logger.getLogger(SEATSLoader.class);
     
     // -----------------------------------------------------------------
@@ -139,6 +111,12 @@ public class SEATSLoader extends Loader {
     // -----------------------------------------------------------------
     // LOADING METHODS
     // -----------------------------------------------------------------
+    
+    @Override
+    public List<LoaderThread> createLoaderTheads() throws SQLException {
+        // TODO Auto-generated method stub
+        return null;
+    }
     
     @Override
     public void load() {
@@ -230,7 +208,7 @@ public class SEATSLoader extends Loader {
         for (String table_name : SEATSConstants.TABLES_DATAFILES) {
             LOG.debug(String.format("Loading table '%s' from fixed file", table_name));
             try {    
-                Table catalog_tbl = this.getTableCatalog(table_name);
+                Table catalog_tbl = this.benchmark.getTableCatalog(table_name);
                 assert(catalog_tbl != null);
                 Iterable<Object[]> iterable = this.getFixedIterable(catalog_tbl);
                 this.loadTable(catalog_tbl, iterable, 5000);
@@ -254,7 +232,7 @@ public class SEATSLoader extends Loader {
         // create a new FREQUENT_FLYER account for a CUSTOMER 
         for (String table_name : SEATSConstants.TABLES_SCALING) {
             try {
-                Table catalog_tbl = this.getTableCatalog(table_name);
+                Table catalog_tbl = this.benchmark.getTableCatalog(table_name);
                 assert(catalog_tbl != null);
                 Iterable<Object[]> iterable = this.getScalingIterable(catalog_tbl); 
                 this.loadTable(catalog_tbl, iterable, 5000);

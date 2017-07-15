@@ -1,8 +1,25 @@
+/******************************************************************************
+ *  Copyright 2015 by OLTPBenchmark Project                                   *
+ *                                                                            *
+ *  Licensed under the Apache License, Version 2.0 (the "License");           *
+ *  you may not use this file except in compliance with the License.          *
+ *  You may obtain a copy of the License at                                   *
+ *                                                                            *
+ *    http://www.apache.org/licenses/LICENSE-2.0                              *
+ *                                                                            *
+ *  Unless required by applicable law or agreed to in writing, software       *
+ *  distributed under the License is distributed on an "AS IS" BASIS,         *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
+ *  See the License for the specific language governing permissions and       *
+ *  limitations under the License.                                            *
+ ******************************************************************************/
+
 package com.oltpbenchmark.util;
 
 import com.oltpbenchmark.Results;
-import com.oltpbenchmark.util.dbms_collectors.DBParameterCollector;
-import com.oltpbenchmark.util.dbms_collectors.DBParameterCollectorGen;
+import com.oltpbenchmark.api.TransactionType;
+import com.oltpbenchmark.api.collectors.DBParameterCollector;
+import com.oltpbenchmark.api.collectors.DBParameterCollectorGen;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration.ConfigurationException;
@@ -20,8 +37,10 @@ import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.zip.GZIPOutputStream;
 
 public class ResultUploader {
@@ -46,11 +65,12 @@ public class ResultUploader {
     XMLConfiguration expConf;
     Results results;
     CommandLine argsLine;
+    DBParameterCollector collector;
 
     String dbUrl, dbType;
     String username, password;
     String benchType;
-    int windowSize;
+//    int windowSize;
     String uploadCode, uploadUrl;
 
     public ResultUploader(Results r, XMLConfiguration conf, CommandLine argsLine) {
@@ -63,17 +83,30 @@ public class ResultUploader {
         username = expConf.getString("username");
         password = expConf.getString("password");
         benchType = argsLine.getOptionValue("b");
-        windowSize = Integer.parseInt(argsLine.getOptionValue("s"));
+//        windowSize = 1;
+//        if (argsLine.hasOption("s")) {
+//        	windowSize = Integer.parseInt(argsLine.getOptionValue("s"));
+//        } else {
+//        	windowSize = 1;
+//        }
         uploadCode = expConf.getString("uploadCode");
         uploadUrl = expConf.getString("uploadUrl");
+
+        this.collector = DBParameterCollectorGen.getCollector(dbType, dbUrl, username, password);
+        assert(this.collector != null);
+    }
+    
+    public DBParameterCollector getConfCollector() {
+        return (this.collector);
     }
 
     public void writeDBParameters(PrintStream os) {
-        DBParameterCollector collector = DBParameterCollectorGen.getCollector(dbType);
-        Map<String, String> dbConf = collector.collect(dbUrl, username, password);
-        for (Map.Entry<String, String> kv: dbConf.entrySet()) {
-            os.println(kv.getKey().toLowerCase() + "=" + kv.getValue().toLowerCase());
-        }
+        String dbConf = collector.collectParameters();
+        os.print(dbConf);
+    }
+    
+    public void writeDBMetrics(PrintStream os) {
+    	os.print(collector.collectMetrics());
     }
 
     public void writeBenchmarkConf(PrintStream os) throws ConfigurationException {
@@ -85,44 +118,52 @@ public class ResultUploader {
     }
 
     public void writeSummary(PrintStream os) {
+    	Map<String, Object> summaryMap = new TreeMap<String, Object>();
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         Date now = new Date();
-        os.println(now.getTime() / 1000L);
-        os.println(dbType);
-        os.println(benchType);
-        os.println(results.latencyDistribution.toString());
-        os.println(results.getRequestsPerSecond());
+        summaryMap.put("Current Timestamp (milliseconds)", now.getTime());
+        summaryMap.put("DBMS Type", dbType);
+        summaryMap.put("DBMS Version", collector.collectVersion());
+        summaryMap.put("Benchmark Type", benchType);
+        summaryMap.put("Latency Distribution", results.latencyDistribution.toMap());
+        summaryMap.put("Throughput (requests/second)", results.getRequestsPerSecond());
         for (String field: BENCHMARK_KEY_FIELD) {
-            os.println(field + "=" + expConf.getString(field));
+        	summaryMap.put(field, expConf.getString(field));
         }
+        os.println(JSONUtil.format(JSONUtil.toJSONString(summaryMap)));
     }
 
-    public void uploadResult() throws ParseException {
+    public void uploadResult(List<TransactionType> activeTXTypes) throws ParseException {
         try {
-            File expConfFile = File.createTempFile("expConf", ".tmp");
-            File sampleFile = File.createTempFile("sample", ".tmp");
+            File expConfigFile = File.createTempFile("expconfig", ".tmp");
+            File samplesFile = File.createTempFile("samples", ".tmp");
             File summaryFile = File.createTempFile("summary", ".tmp");
-            File dbConfFile = File.createTempFile("dbConf", ".tmp");
-            File rawDataFile = File.createTempFile("raw", ".gz");
+            File paramsFile = File.createTempFile("params", ".tmp");
+            File metricsFile = File.createTempFile("metrics", ".tmp");
+            File csvDataFile = File.createTempFile("csv", ".gz");
 
-            PrintStream confOut = new PrintStream(new FileOutputStream(expConfFile));
+            PrintStream confOut = new PrintStream(new FileOutputStream(expConfigFile));
             writeBenchmarkConf(confOut);
             confOut.close();
 
-            confOut = new PrintStream(new FileOutputStream(dbConfFile));
+            confOut = new PrintStream(new FileOutputStream(paramsFile));
             writeDBParameters(confOut);
             confOut.close();
 
-            confOut = new PrintStream(new FileOutputStream(sampleFile));
-            results.writeCSV(windowSize, confOut);
+            confOut = new PrintStream(new FileOutputStream(metricsFile));
+            writeDBMetrics(confOut);
+            confOut.close();
+
+            confOut = new PrintStream(new FileOutputStream(samplesFile));
+            results.writeCSV2(confOut);
             confOut.close();
 
             confOut = new PrintStream(new FileOutputStream(summaryFile));
             writeSummary(confOut);
             confOut.close();
 
-            confOut = new PrintStream(new GZIPOutputStream(new FileOutputStream(rawDataFile)));
-            results.writeAllCSVAbsoluteTiming(confOut);
+            confOut = new PrintStream(new GZIPOutputStream(new FileOutputStream(csvDataFile)));
+            results.writeAllCSVAbsoluteTiming(activeTXTypes, confOut);
             confOut.close();
 
             CloseableHttpClient httpclient = HttpClients.createDefault();
@@ -130,10 +171,11 @@ public class ResultUploader {
 
             HttpEntity reqEntity = MultipartEntityBuilder.create()
                     .addTextBody("upload_code", uploadCode)
-                    .addPart("sample_data", new FileBody(sampleFile))
-                    .addPart("raw_data", new FileBody(rawDataFile))
-                    .addPart("db_conf_data", new FileBody(dbConfFile))
-                    .addPart("benchmark_conf_data", new FileBody(expConfFile))
+                    .addPart("sample_data", new FileBody(samplesFile))
+                    .addPart("raw_data", new FileBody(csvDataFile))
+                    .addPart("db_parameters_data", new FileBody(paramsFile))
+                    .addPart("db_metrics_data", new FileBody(metricsFile))
+                    .addPart("benchmark_conf_data", new FileBody(expConfigFile))
                     .addPart("summary_data", new FileBody(summaryFile))
                     .build();
 
