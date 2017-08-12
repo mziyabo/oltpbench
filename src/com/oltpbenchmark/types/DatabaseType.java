@@ -45,6 +45,7 @@ public enum DatabaseType {
     HSQLDB("org.hsqldb.jdbcDriver", true, false),
     H2("org.h2.Driver", true, false),
     MONETDB("nl.cwi.monetdb.jdbc.MonetDriver", false, false),
+    VOLTDB("org.voltdb.jdbc.Driver", false, false),
     NUODB("com.nuodb.jdbc.Driver", true, false),
     TIMESTEN("com.timesten.jdbc.TimesTenDriver", true, false),
     PELOTON("org.postgresql.Driver", false, false)
