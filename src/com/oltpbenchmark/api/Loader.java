@@ -56,7 +56,10 @@ public abstract class Loader<T extends BenchmarkModule> {
         
         public LoaderThread() throws SQLException {
             this.conn = Loader.this.benchmark.makeConnection();
-            this.conn.setAutoCommit(false);
+            
+            // FIXME: NASH 2017-12-08
+            // VOLTDB doesn't support the feature below so we are commenting this line for now
+            // this.conn.setAutoCommit(false);
         }
         
         @Override

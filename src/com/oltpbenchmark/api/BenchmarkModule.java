@@ -281,7 +281,9 @@ public abstract class BenchmarkModule {
         try {
             Loader<? extends BenchmarkModule> loader = this.makeLoaderImpl(conn);
             if (loader != null) {
-                conn.setAutoCommit(false);
+                // FIXME: NASH 2017-12-08
+            	// VOLTDB doesn't support this property so we're commenting it out for now
+            	// conn.setAutoCommit(false);
                 
                 // PAVLO: 2016-12-23
                 // We are going to eventually migrate everything over to use the
