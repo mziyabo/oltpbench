@@ -306,7 +306,10 @@ public abstract class BenchmarkModule {
                                                 loader.getClass().getSimpleName()));
                     loader.load();
                 }
-                conn.commit();
+                
+                // FIXME: NASH 2017-13-08
+                // Throwing up SQL unsupported- autocommit* for VOLTDB and MONETDB
+                // conn.commit();
 
                 if (loader.getTableCounts().isEmpty() == false) {
                     LOG.info("Table Counts:\n" + loader.getTableCounts());
