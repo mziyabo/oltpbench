@@ -160,7 +160,7 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
         
         try {
             PreparedStatement itemPrepStmt = getInsertStatement(conn, TPCCConstants.TABLENAME_ITEM);
-
+                        
             Item item = new Item();
             int batchSize = 0;
             for (int i = 1; i <= itemKount; i++) {
@@ -664,19 +664,23 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
 			            orlnPrepStmt.setString(idx++, order_line.ol_dist_info);
 			            orlnPrepStmt.addBatch();
 
-						if ((k % TPCCConfig.configCommitCount) == 0) {
-							ordrPrepStmt.executeBatch();
-							if (newOrderBatch > 0) {
-							    nworPrepStmt.executeBatch();
-							    newOrderBatch = 0;
-							}
-							orlnPrepStmt.executeBatch();
-							
-							ordrPrepStmt.clearBatch();
-							nworPrepStmt.clearBatch();
-							orlnPrepStmt.clearBatch();
-							transCommit(conn);
-						}
+			            // FIXME: NASH 2017-15-AUG
+			            // Commented out these lines 
+			            // Issue with Monetdb loading- yet to investigate cause
+			            
+//						if ((k % TPCCConfig.configCommitCount) == 0) {
+//							ordrPrepStmt.executeBatch();
+//							if (newOrderBatch > 0) {
+//							    nworPrepStmt.executeBatch();
+//							    newOrderBatch = 0;
+//							}
+//							orlnPrepStmt.executeBatch();
+//							
+//							ordrPrepStmt.clearBatch();
+//							nworPrepStmt.clearBatch();
+//							orlnPrepStmt.clearBatch();
+//							transCommit(conn);
+//						}
 
 					} // end for [l]
 
