@@ -283,7 +283,7 @@ public abstract class BenchmarkModule {
             if (loader != null) {
                 // FIXME: NASH 2017-12-08
             	// VOLTDB doesn't support this property so we're commenting it out for now
-            	// conn.setAutoCommit(false);
+            	 conn.setAutoCommit(false);
                 
                 // PAVLO: 2016-12-23
                 // We are going to eventually migrate everything over to use the
@@ -309,7 +309,7 @@ public abstract class BenchmarkModule {
                 
                 // FIXME: NASH 2017-13-08
                 // Throwing up SQL unsupported- autocommit* for VOLTDB and MONETDB
-                // conn.commit();
+                 conn.commit();
 
                 if (loader.getTableCounts().isEmpty() == false) {
                     LOG.info("Table Counts:\n" + loader.getTableCounts());

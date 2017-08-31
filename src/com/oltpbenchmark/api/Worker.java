@@ -527,7 +527,7 @@ public abstract class Worker<T extends BenchmarkModule> implements Runnable {
             // This *does not* incorrectly inflate our performance numbers.
             // It's more of a workaround for now until I can figure out how to do
             // this correctly in JDBC.
-            if (dbType == DatabaseType.PELOTON || dbType == DatabaseType.VOLTDB || dbType == DatabaseType.MONETDB) {
+            if (dbType == DatabaseType.PELOTON || dbType == DatabaseType.VOLTDB) {
                 msg += "\nBut we are not stopping because " + dbType + " cannot handle this correctly";
                 LOG.warn(msg);
             } else {

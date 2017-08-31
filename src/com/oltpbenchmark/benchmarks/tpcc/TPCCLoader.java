@@ -198,12 +198,12 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                 itemPrepStmt.addBatch();
                 batchSize++;
 
-                if (batchSize == TPCCConfig.configCommitCount) {
-                    itemPrepStmt.executeBatch();
-                    itemPrepStmt.clearBatch();
-                    transCommit(conn);
-                    batchSize = 0;
-                }
+//                if (batchSize == TPCCConfig.configCommitCount) {
+//                    itemPrepStmt.executeBatch();
+//                    itemPrepStmt.clearBatch();
+//                    transCommit(conn);
+//                    batchSize = 0;
+//                }
             } // end for
 
 
@@ -667,7 +667,6 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
 			            // FIXME: NASH 2017-15-AUG
 			            // Commented out these lines 
 			            // Issue with Monetdb loading- yet to investigate cause
-			            
 //						if ((k % TPCCConfig.configCommitCount) == 0) {
 //							ordrPrepStmt.executeBatch();
 //							if (newOrderBatch > 0) {
