@@ -48,8 +48,8 @@ public abstract class Loader<T extends BenchmarkModule> {
 
     /**
      * A LoaderThread is responsible for loading some portion of a
-     * benchmark's databsae.
-     * Note that each LoaderThread has its own databsae Connection handle.
+     * benchmark's database.
+     * Note that each LoaderThread has its own database Connection handle.
      */
     public abstract class LoaderThread implements Runnable {
         private final Connection conn;
@@ -57,9 +57,11 @@ public abstract class Loader<T extends BenchmarkModule> {
         public LoaderThread() throws SQLException {
             this.conn = Loader.this.benchmark.makeConnection();
             
-            // FIXME: NASH 2017-12-08
-            // VOLTDB doesn't support the feature below so we are commenting this line for now
-            this.conn.setAutoCommit(false);
+            // HOTFIX: NASH 2017-12-08
+            // VOLTDB doesn't support the setAutoCommit SQL feature
+            if (workConf.getDBType() != DatabaseType.VOLTDB) {
+				this.conn.setAutoCommit(false);
+			}
         }
         
         @Override
